@@ -1,6 +1,9 @@
+from tracemalloc import start
 import gurobipy as gp
 from gurobipy import GRB
 
+from GridWorld import GridWorld
+import random
 
 
 # Helper functions to add STL constraints
@@ -116,3 +119,31 @@ def count_transitions_until_target(path, target_location):
         prev_point = point
 
     return transitions
+
+
+def start_pos_init(grid:GridWorld,needs_help=False):
+    if needs_help:
+        start_pos = grid.conflict_cell
+    else:
+        free_except_conflict = [c for c in grid.free_cells if c != grid.conflict_cell]
+        start_pos = random.choice(free_except_conflict)
+    return start_pos
+
+def get_ltl_spec(grid: GridWorld, num_existing_locs=2, needs_help=False):
+    ltl_spec = []
+    if needs_help:
+        ltl_spec.append(grid.conflict_cell)
+        
+        interest_points = random.sample(
+            [c for c in grid.free_cells if c != grid.dynamic_conflict and c != grid.conflict_cell],
+            num_existing_locs - 1
+        )
+        ltl_spec.extend(interest_points)
+    else:
+        interest_points =random.sample(
+        [c for c in grid.free_cells if c != grid.dynamic_conflict], num_existing_locs)
+        ltl_spec.extend(interest_points)
+        
+    return ltl_spec
+
+
