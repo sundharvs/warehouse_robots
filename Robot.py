@@ -11,6 +11,7 @@ from gurobipy import GRB
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import colors
+import ast
 
 class GridWorldAgent:
     def __init__(self, normal_ltl_spec, capabilities, initial_pos, gridworld:GridWorld,T,actuation=1, needs_help=False):
@@ -50,6 +51,7 @@ class GridWorldAgent:
 
         Inferred capabilities: {self.capabilities}
         Scene description: {scene_description}
+        Current location: {self.position}
         """
         
         response = self.gridworld.llm_query(prompt)
@@ -69,13 +71,15 @@ class GridWorldAgent:
         Generate a clear assistance proposal to the robot if you can help resolve this issue.
         However, if you can not help, generate a line "can't_help_you:True". Also include reasoning on why you can not help. 
 
-        The minimum information you should include are 1) What capability you have that can help 2) And some description of level of effort by analyzing "considerations" list. 
+        The minimum information you should include are 1) What capability you have that can help 2) And some description of level of effort by analyzing "considerations" list.
+        You must also include a line in your output stating the location to which you must move to fulfill the help request, as follows: "Location: (x, y)" 
 
         "Help request": 
         {help_request}
         
         "Inferred capabiltiies":{self.capabilities}
         """
+        # TODO: Not all help proposals require moving to the requester, allow for this possibility.
         
         # TODO: "Considerations": {Time to target: "5 minutes", Time to complete task: "1 minute", "Artifical cost": 1 Unit per minute"}
         
@@ -92,7 +96,12 @@ class GridWorldAgent:
             self.gridworld.send_message(self.id, sender_id, help_proposal)
         elif message.type == "help_proposal":
             #TODO: Do some stuff here to evaluate proposals
-            pass
+            help_confirm = Message(type='help_confirmation', content=message.content)
+            self.gridworld.send_message(self.id, sender_id, help_confirm)
+        elif message.type == "help_confirmation":
+            goto_location = ast.literal_eval(message.content.split("Location:")[1].strip(" *"))
+            self.ltl_spec.append(goto_location)
+            print(self.ltl_spec)
 
 
     def _build_model(self):
